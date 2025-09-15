@@ -1,4 +1,4 @@
-Project: Brewery Data Pipeline with Airflow, Spark, and Delta Lake
+##Project: Brewery Data Pipeline with Airflow, Spark, and Delta Lake ##
 
 Architecture:
 
