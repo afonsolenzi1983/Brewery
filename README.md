@@ -5,7 +5,8 @@ Architecture:
 
 
 
-![Architecture](https://github.com/afonsolenzi1983/Brewery/blob/main/Architecture.jpg)
+<img width="601" height="449" alt="image" src="https://github.com/user-attachments/assets/e9907c1f-9c1c-4b71-8f80-d4a74bbe29f9" />
+
 
 
 This project implements a modern, scalable ETL pipeline to ingest data from the public OpenBreweryDB API. The pipeline is orchestrated by Apache Airflow, processed with Apache Spark, and stored in a MinIO-based data lake using the Delta Lake format. The entire environment is containerized with Docker Compose for portability and ease of deployment.
