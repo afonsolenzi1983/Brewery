@@ -13,10 +13,15 @@ This project implements a modern, scalable ETL pipeline to ingest data from the 
 The pipeline follows the Medallion Architecture to progressively refine and structure the data across Bronze, Silver, and Gold layers, making it suitable for analytics and business intelligence.
 
 Technology Stack
+
 Orchestration: Apache Airflow
+
 Data Processing: Apache Spark
+
 Data Lake Storage: MinIO
+
 Storage Format: Delta Lake
+
 Containerization: Docker Compose
 
 
