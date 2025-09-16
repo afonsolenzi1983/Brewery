@@ -25,7 +25,7 @@ Storage Format: Delta Lake
 
 Containerization: Docker Compose
 
-To execute the solution please:
+## To execute the solution please:
 
  -clone the repo 
  
