@@ -33,7 +33,7 @@ Containerization: Docker Compose
  
  -docker compose up
  
- -execute the action on the mentioned 'airflow UI - actions.txt'
+ -execute the action on the mentioned 'airflow UI - actions.txt'. Variables for minio and Connection for spark.
  
  -once you are done just run docker compose down -v
 
