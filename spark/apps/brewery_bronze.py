@@ -70,7 +70,7 @@ def main():
     """
     Main function to orchestrate the data ingestion pipeline.
     """
-    spark = create_spark_session()
+    spark = get_spark_session()
 
     base_api_url = "https://api.openbrewerydb.org/v1/breweries"
     output_path = "s3a://bronze/breweries" # Path in MinIO for the bronze layer
