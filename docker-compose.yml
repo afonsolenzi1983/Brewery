@@ -6,15 +6,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-apache-spark==4.1.2"
+    _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow-providers-apache-spark==4.1.2 pyspark==3.5.1"
     JAVA_HOME: /usr/lib/jvm/default-java  # <-- ADD THIS LINE
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./spark/apps:/opt/bitnami/spark/app   # <-- This line is essential 
+    - ./spark/jars:/opt/bitnami/spark/jars 
   user: "${AIRFLOW_UID:-50000}"
-  networks:
-    - app-network
   depends_on:
     postgres:
       condition: service_healthy
@@ -34,8 +34,6 @@ services:
       retries: 5
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
-    networks:
-      - app-network
     restart: always
 
   minio:
@@ -50,12 +48,13 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio-data-volume:/data
-    networks:
-      - app-network
     restart: always
 
   spark-master:
-    image: bitnami/spark:3.5
+    #image: bitnami/spark:3.5
+    build:
+      context: .
+      dockerfile: spark.Dockerfile 
     container_name: spark-master
     environment:
       - SPARK_MODE=master
@@ -66,12 +65,13 @@ services:
     volumes:
       - ./spark/apps:/opt/bitnami/spark/app # <-- FIX 2: Corrected path from 'apps' to 'app'
       - ./spark/data:/opt/bitnami/spark/data
-    networks:
-      - app-network
     restart: always
 
   spark-worker:
-    image: bitnami/spark:3.5
+    #image: bitnami/spark:3.5
+    build:
+      context: .
+      dockerfile: spark.Dockerfile # <-- ADD THESE LINES
     container_name: spark-worker
     environment:
       - SPARK_MODE=worker
@@ -82,8 +82,6 @@ services:
       - ./spark/data:/opt/bitnami/spark/data
     depends_on:
       - spark-master
-    networks:
-      - app-network
     restart: always
 
   airflow-init:
@@ -129,8 +127,3 @@ services:
 volumes:
   postgres-db-volume:
   minio-data-volume:
-
-networks:
-  app-network:
-    name: app-network
-    driver: bridge
