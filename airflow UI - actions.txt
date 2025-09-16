@@ -1,0 +1,16 @@
+﻿CONNECTION
+
+
+* Connection Id: spark_default (This must match the conn_id used in your SparkSubmitOperator in the DAG).
+* Connection Type: Spark
+* Host: spark://spark-master (The spark:// prefix is important).
+* Port: 7077
+
+
+
+
+VARIABLES
+
+
+MINIO_ROOT_USER = minioadmin
+MINIO_ROOT_PASSWORD = minioadmin
