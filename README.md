@@ -25,6 +25,14 @@ Storage Format: Delta Lake
 
 Containerization: Docker Compose
 
+To execute the solution please:
+
+ -clone the repo 
+ -docker compose build --no-cache
+ -docker compose up
+ -execute the action on the mentioned 'airflow UI - actions.txt'
+ -once you are done just run docker compose down -v
+
 
 
 
