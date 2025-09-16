@@ -32,8 +32,12 @@ Containerization: Docker Compose
  -docker compose build --no-cache
  
  -docker compose up
+
+ - minio http://localhost:9001/ create a buckets
+
+ - spark master http://localhost:8081/
  
- -execute the action on the mentioned 'airflow UI - actions.txt'. Variables for minio and Connection for spark.
+ - airflow http://localhost:8082/ execute the action on the mentioned 'airflow UI - actions.txt'. Variables for minio and Connection for spark.
  
  -once you are done just run docker compose down -v
 
