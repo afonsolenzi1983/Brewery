@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  # Serviço do Postgres para o metadata do Airflow
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - data_network
+
+  # Serviço do MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # API Port
+      - "9001:9001" # Console UI Port
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - data_network
+
+  # Serviço do Spark Master
+  spark-master:
+    image: bitnami/spark:3.4.2 # Use a stable image
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_NO_DAEMONIZE=true # Good practice to keep container running
+    ports:
+      - "8081:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark/app:/opt/bitnami/spark/app
+      - ./spark/jars:/opt/bitnami/spark/jars # Mounts your local JARs      
+
+    networks:
+      - data_network
+
+  # Serviço do Spark Worker
+  spark-worker:
+    image: bitnami/spark:3.4.2 # Use a stable image
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_NO_DAEMONIZE=true
+    volumes:
+      - ./spark/app:/opt/bitnami/spark/app
+      
+    networks:
+      - data_network
+
+  # Initialization service for Airflow
+  airflow-init:
+    build: .
+    container_name: airflow-init
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    command: bash -c "airflow db init && airflow users create --username airflow --password airflow --email airflow@example.com --firstname John --lastname Doe --role Admin"
+    networks:
+      - data_network
+
+  # Serviço do Airflow Webserver
+  airflow-webserver:
+    build: .
+    container_name: airflow-webserver
+    depends_on:
+      - airflow-init
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
+    command: webserver
+    networks:
+      - data_network
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Serviço do Airflow Scheduler
+  airflow-scheduler:
+    build: .
+    container_name: airflow-scheduler
+    depends_on:
+      - airflow-webserver
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    command: scheduler
+    networks:
+      - data_network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  data_network:
+    driver: bridge
