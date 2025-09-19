@@ -1,0 +1,112 @@
+import os
+from pyspark.sql import SparkSession
+from datetime import datetime
+import sys
+
+# --- Configurations ---
+MINIO_ENDPOINT = "http://minio:9000"
+MINIO_ACCESS_KEY = os.getenv("MINIO_ROOT_USER", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
+
+# --- Paths ---
+LANDING_BUCKET_PATH = "s3a://landing"
+SILVER_BUCKET_PATH = "s3a://silver"
+TARGET_TABLE_NAME = "brewery_silver"
+
+def get_spark_session():
+    """Creates and configures a Spark session for Delta Lake and MinIO."""
+    return (
+        SparkSession.builder.appName("ParquetToDeltaLake")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT)
+        .config("spark.hadoop.fs.s3a.access.key", MINIO_ACCESS_KEY)
+        .config("spark.hadoop.fs.s3a.secret.key", MINIO_SECRET_KEY)
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .config("spark.delta.logStore.class", "org.apache.spark.sql.delta.storage.S3SingleDriverLogStore")
+        .getOrCreate()
+    )
+
+def main():
+    """
+    Main function to read Parquet, create a Delta table, and merge data.
+    """
+    spark = get_spark_session()
+    
+    # 1. Define input and output paths
+    current_date_str = datetime.now().strftime('%Y%m%d')
+    input_file_path = f"{LANDING_BUCKET_PATH}/breweries-{current_date_str}.parquet"
+    target_table_path = f"{SILVER_BUCKET_PATH}/{TARGET_TABLE_NAME}"
+    staging_table = "parquet_source"
+
+    print(f"Reading data from: {input_file_path}")
+    try:
+        # 2. Read the Parquet file and create a temporary view
+        df = spark.read.format("parquet").load(input_file_path)
+        df.createOrReplaceTempView(staging_table)
+        print("Parquet data loaded and registered as a temporary view.")
+        
+    except Exception as e:
+        print(f"Error reading Parquet file: {e}")
+        spark.stop()
+        sys.exit(1)
+
+    # 3. Create the Delta table if it doesn't exist
+    print(f"Ensuring Delta table '{TARGET_TABLE_NAME}' exists at {target_table_path}")
+    create_table_sql = f"""
+    CREATE TABLE IF NOT EXISTS delta.`{target_table_path}` (
+      id STRING, name STRING, brewery_type STRING, address_1 STRING,
+      address_2 STRING, address_3 STRING, city STRING, state_province STRING,
+      postal_code STRING, country STRING, longitude DOUBLE, latitude DOUBLE,
+      phone STRING, website_url STRING, state STRING, street STRING,
+      DateIngestion TIMESTAMP
+    ) USING DELTA
+    """
+    spark.sql(create_table_sql)
+
+    # 4. Perform the MERGE operation
+    print(f"Merging data from '{staging_table}' into '{target_table_path}'")
+    
+    merge_sql = f"""
+    MERGE INTO delta.`{target_table_path}` AS target
+    USING {staging_table} AS source
+    ON target.id = source.id
+    WHEN MATCHED THEN
+        UPDATE SET
+            target.name = source.name,
+            target.brewery_type = source.brewery_type,
+            target.address_1 = source.address_1,
+            target.address_2 = source.address_2,
+            target.address_3 = source.address_3,
+            target.city = source.city,
+            target.state_province = source.state_province,
+            target.postal_code = source.postal_code,
+            target.country = source.country,
+            target.longitude = source.longitude,
+            target.latitude = source.latitude,
+            target.phone = source.phone,
+            target.website_url = source.website_url,
+            target.state = source.state,
+            target.street = source.street,
+            target.DateIngestion = current_timestamp()
+    WHEN NOT MATCHED THEN
+        INSERT (
+            id, name, brewery_type, address_1, address_2, address_3,
+            city, state_province, postal_code, country, longitude, latitude,
+            phone, website_url, state, street, DateIngestion
+        )
+        VALUES (
+            source.id, source.name, source.brewery_type, source.address_1, source.address_2, source.address_3,
+            source.city, source.state_province, source.postal_code, source.country, source.longitude, source.latitude,
+            source.phone, source.website_url, source.state, source.street, current_timestamp()
+        )
+    """
+    spark.sql(merge_sql)
+    
+    print("Merge operation completed successfully.")
+    
+    spark.stop()
+
+if __name__ == "__main__":
+    main()
