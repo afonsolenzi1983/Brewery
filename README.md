@@ -43,4 +43,23 @@ Containerization: Docker Compose
 
 
 
+JAR Download Links
+delta-spark_2.12-3.2.0.jar:
+
+https://mvnrepository.com/artifact/io.delta/delta-spark_2.12/3.2.0
+
+hadoop-aws-3.3.4.jar:
+
+https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-aws/3.3.4
+
+aws-java-sdk-bundle-1.12.262.jar:
+
+https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-bundle/1.12.262
+
+delta-storage-3.2.0.jar:
+
+https://mvnrepository.com/artifact/io.delta/delta-storage/3.2.0
+
+
+
 
